@@ -17,10 +17,10 @@ const int LOADCELL_SCK_PIN = 3;
 #define IN4 9
 
 // Ultrasonic Sensor Pins
-const int TRIG_PIN_HC = 5;  // HC-SR04 facing downward
-const int ECHO_PIN_HC = 4;
-const int TRIG_PIN_JSN = 11; // JSN-SR04T facing across the top
-const int ECHO_PIN_JSN = 10;
+const int TRIG_PIN_HC1 = 5;  // First HC-SR04 facing downward
+const int ECHO_PIN_HC1 = 4;
+const int TRIG_PIN_HC2 = 11; // Second HC-SR04 facing downward
+const int ECHO_PIN_HC2 = 10;
 
 // Button Pin
 const int BUTTON_PIN = 2; // Adjust based on wiring
@@ -32,8 +32,7 @@ const byte MLX90641_address = 0x33;
 // Trashcan Specifications
 #define WEIGHT_THRESHOLD 0.4  // Max weight threshold in kg
 #define TEMP_THRESHOLD 40.0   // Temperature threshold in Celsius
-#define TRASH_FULL_DISTANCE 10  // Distance threshold in cm for HC-SR04
-#define OBJECT_DETECTED_DISTANCE 25  // Distance threshold in cm for JSN-SR04T
+#define TRASH_FULL_DISTANCE 10  // Distance threshold in cm for both HC-SR04 sensors
 
 HX711 scale;
 Stepper stepperMotor(STEPS_PER_REV, IN1, IN3, IN2, IN4);
@@ -42,6 +41,12 @@ uint16_t eeMLX90641[832];
 float MLX90641To[192];
 uint16_t MLX90641Frame[242];
 paramsMLX90641 MLX90641;
+
+volatile bool buttonPressed = false; // Flag to indicate button press
+bool isLidOpen = false; // Track whether the lid is open or closed
+
+// Interrupt Service Routine (ISR) Prototype
+void IRAM_ATTR buttonPress();
 
 void setup() {
     Serial.begin(115200);
@@ -79,23 +84,21 @@ void setup() {
     MLX90641_SetRefreshRate(MLX90641_address, 0x05);
 
     // Initialize Ultrasonic Sensors
-    pinMode(TRIG_PIN_HC, OUTPUT);
-    pinMode(ECHO_PIN_HC, INPUT);
-    pinMode(TRIG_PIN_JSN, OUTPUT);
-    pinMode(ECHO_PIN_JSN, INPUT);
+    pinMode(TRIG_PIN_HC1, OUTPUT);
+    pinMode(ECHO_PIN_HC1, INPUT);
+    pinMode(TRIG_PIN_HC2, OUTPUT);
+    pinMode(ECHO_PIN_HC2, INPUT);
 
-    // Initialize Button
-    pinMode(BUTTON_PIN, INPUT_PULLUP);  // Use internal pull-up resistor
-    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPress, RISING);
+    // Initialize Button with Interrupt
+    pinMode(BUTTON_PIN, INPUT_PULLUP);  // Internal pull-up resistor
+    attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPress, FALLING);
     Serial.println("System Ready.");
 }
 
-bool buttonPressed = false;
-
-void buttonPress(){
-  buttonPressed = true;
+// Interrupt Service Routine (ISR)
+void IRAM_ATTR buttonPress() {
+    buttonPressed = true;
 }
-
 
 void loop() {
     // --- Weight Measurement ---
@@ -124,33 +127,46 @@ void loop() {
     Serial.println("");  // End the line for Python to read
 
     // --- Distance Measurement ---
-    float distanceHC = getDistance(TRIG_PIN_HC, ECHO_PIN_HC);
-    float distanceJSN = getDistance(TRIG_PIN_JSN, ECHO_PIN_JSN);
+    float distanceHC1 = getDistance(TRIG_PIN_HC1, ECHO_PIN_HC1);
+    float distanceHC2 = getDistance(TRIG_PIN_HC2, ECHO_PIN_HC2);
 
+    // Serial.print("Distance HC1: ");
+    // Serial.print(distanceHC1);
+    // Serial.print(" cm, Distance HC2: ");
+    // Serial.print(distanceHC2);
+    // Serial.println(" cm");
 
+    // If the button was pressed, toggle the lid state
     if (buttonPressed) {
-        //Serial.println("🔘 Button pressed! Opening the lid.");
-        openLid();
+        if (isLidOpen) {
+            closeLid();
+            isLidOpen = false;
+        } else {
+            openLid();
+            isLidOpen = true;
+        }
         buttonPressed = false;
-    } else if (weight_kg >= WEIGHT_THRESHOLD || maxTemp >= TEMP_THRESHOLD || 
-               (distanceHC <= TRASH_FULL_DISTANCE && distanceJSN <= OBJECT_DETECTED_DISTANCE)) {
-        //Serial.println("⚠️ Closing Trashcan Lid!");
+    }
+    // If the weight or temperature threshold is met, or both sensors detect full trash, close the lid
+    else if (weight_kg >= WEIGHT_THRESHOLD || maxTemp >= TEMP_THRESHOLD || 
+             (distanceHC1 <= TRASH_FULL_DISTANCE && distanceHC2 <= TRASH_FULL_DISTANCE)) {
         closeLid();
-    } else {
-        //Serial.println("✅ Trashcan is not full.");
+        isLidOpen = false;
     }
 
     delay(250);
 }
 
 void closeLid() {
+    //Serial.println("⚠️ Closing Trashcan Lid!");
     for (int i = 0; i < 6; i++) {
         stepperMotor.step(-STEPS_PER_REV);
     }
 }
 
 void openLid() {
-    for (int i = 0; i < 5; i++) {
+    //Serial.println("🔘 Opening Trashcan Lid!");
+    for (int i = 0; i < 6; i++) {
         stepperMotor.step(STEPS_PER_REV);
     }
 }
