@@ -43,10 +43,14 @@ uint16_t MLX90641Frame[242];
 paramsMLX90641 MLX90641;
 
 volatile bool buttonPressed = false; // Flag to indicate button press
-bool isLidOpen = false; // Track whether the lid is open or closed
+bool isLidOpen = true; // Track whether the lid is open or closed
 
 // Interrupt Service Routine (ISR) Prototype
-void IRAM_ATTR buttonPress();
+// void IRAM_ATTR buttonPress();
+// Interrupt Service Routine (ISR)
+void IRAM_ATTR buttonPress() {
+    buttonPressed = true;
+}
 
 void setup() {
     Serial.begin(115200);
@@ -67,21 +71,21 @@ void setup() {
     if (!isConnected()) {
         Serial.println("MLX90641 not detected. Please check wiring.");
         while (1);
-    }
+    } else Serial.println("MLX90641 detected");
 
     int status = MLX90641_DumpEE(MLX90641_address, eeMLX90641);
     if (status != 0) {
         Serial.println("Failed to load system parameters");
         while (1);
-    }
+    } else Serial.println("MLX90641 param loaded");
 
     status = MLX90641_ExtractParameters(eeMLX90641, &MLX90641);
     if (status != 0) {
         Serial.println("Parameter extraction failed");
         while (1);
-    }
+    } else Serial.println("MLX90641 param extracted");
 
-    MLX90641_SetRefreshRate(MLX90641_address, 0x05);
+    MLX90641_SetRefreshRate(MLX90641_address, 0x04);
 
     // Initialize Ultrasonic Sensors
     pinMode(TRIG_PIN_HC1, OUTPUT);
@@ -95,10 +99,7 @@ void setup() {
     Serial.println("System Ready.");
 }
 
-// Interrupt Service Routine (ISR)
-void IRAM_ATTR buttonPress() {
-    buttonPressed = true;
-}
+
 
 void loop() {
     // --- Weight Measurement ---
@@ -118,7 +119,6 @@ void loop() {
             maxTemp = MLX90641To[x];
         }
     }
-
     // **NEW: Only print the 192 temperature values in CSV format**
     for (int x = 0; x < 192; x++) {
         Serial.print(MLX90641To[x], 2);
@@ -150,11 +150,12 @@ void loop() {
     // If the weight or temperature threshold is met, or both sensors detect full trash, close the lid
     else if (weight_kg >= WEIGHT_THRESHOLD || maxTemp >= TEMP_THRESHOLD || 
              (distanceHC1 <= TRASH_FULL_DISTANCE && distanceHC2 <= TRASH_FULL_DISTANCE)) {
-        closeLid();
+        if (isLidOpen){
+          closeLid();
+        }
         isLidOpen = false;
     }
-
-    delay(250);
+    delay(125);
 }
 
 void closeLid() {
