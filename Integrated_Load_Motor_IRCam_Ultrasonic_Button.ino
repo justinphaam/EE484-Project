@@ -30,7 +30,7 @@ const byte MLX90641_address = 0x33;
 #define TA_SHIFT 8
 
 // Trashcan Specifications
-#define WEIGHT_THRESHOLD 0.4  // Max weight threshold in kg
+#define WEIGHT_THRESHOLD 1.5  // Max weight threshold in kg
 #define TEMP_THRESHOLD 40.0   // Temperature threshold in Celsius
 #define TRASH_FULL_DISTANCE 10  // Distance threshold in cm for both HC-SR04 sensors
 
@@ -144,6 +144,7 @@ void loop() {
         } else {
             openLid();
             isLidOpen = true;
+            delay(5000);
         }
         buttonPressed = false;
     }
@@ -155,7 +156,7 @@ void loop() {
         }
         isLidOpen = false;
     }
-    delay(125);
+    delay(250);
 }
 
 void closeLid() {
@@ -167,7 +168,7 @@ void closeLid() {
 
 void openLid() {
     //Serial.println("🔘 Opening Trashcan Lid!");
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 5; i++) {
         stepperMotor.step(STEPS_PER_REV);
     }
 }
