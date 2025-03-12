@@ -30,7 +30,7 @@ const byte MLX90641_address = 0x33;
 #define TA_SHIFT 8
 
 // Trashcan Specifications
-#define WEIGHT_THRESHOLD 1.5  // Max weight threshold in kg
+#define WEIGHT_THRESHOLD 4.1  // Max weight threshold in kg
 #define TEMP_THRESHOLD 40.0   // Temperature threshold in Celsius
 #define TRASH_FULL_DISTANCE 10  // Distance threshold in cm for both HC-SR04 sensors
 
