@@ -99,8 +99,6 @@ void setup() {
     Serial.println("System Ready.");
 }
 
-
-
 void loop() {
     // --- Weight Measurement ---
     float weight_grams = scale.get_units(10);
@@ -119,7 +117,7 @@ void loop() {
             maxTemp = MLX90641To[x];
         }
     }
-    // **NEW: Only print the 192 temperature values in CSV format**
+    //Only print the 192 temperature values in CSV format**
     for (int x = 0; x < 192; x++) {
         Serial.print(MLX90641To[x], 2);
         if (x < 191) Serial.print(",");  // Add comma between values
@@ -129,12 +127,6 @@ void loop() {
     // --- Distance Measurement ---
     float distanceHC1 = getDistance(TRIG_PIN_HC1, ECHO_PIN_HC1);
     float distanceHC2 = getDistance(TRIG_PIN_HC2, ECHO_PIN_HC2);
-
-    // Serial.print("Distance HC1: ");
-    // Serial.print(distanceHC1);
-    // Serial.print(" cm, Distance HC2: ");
-    // Serial.print(distanceHC2);
-    // Serial.println(" cm");
 
     // If the button was pressed, toggle the lid state
     if (buttonPressed) {
@@ -148,7 +140,7 @@ void loop() {
         }
         buttonPressed = false;
     }
-    // If the weight or temperature threshold is met, or both sensors detect full trash, close the lid
+    // Conditions to close lid
     else if (weight_kg >= WEIGHT_THRESHOLD || maxTemp >= TEMP_THRESHOLD || 
              (distanceHC1 <= TRASH_FULL_DISTANCE && distanceHC2 <= TRASH_FULL_DISTANCE)) {
         if (isLidOpen){
@@ -160,14 +152,12 @@ void loop() {
 }
 
 void closeLid() {
-    //Serial.println("⚠️ Closing Trashcan Lid!");
     for (int i = 0; i < 6; i++) {
         stepperMotor.step(-STEPS_PER_REV);
     }
 }
 
 void openLid() {
-    //Serial.println("🔘 Opening Trashcan Lid!");
     for (int i = 0; i < 5; i++) {
         stepperMotor.step(STEPS_PER_REV);
     }
